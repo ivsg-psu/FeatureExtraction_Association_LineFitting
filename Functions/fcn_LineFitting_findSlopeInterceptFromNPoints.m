@@ -1,5 +1,5 @@
 
-function [slope, intercept, angle_in_radians, unit_tangent_vector, unit_orthogonal_vector] = ...
+function [slope, intercept, angle_in_radians, unit_tangent_vector, unit_orthogonal_vector,r_squared] = ...
     fcn_LineFitting_findSlopeInterceptFromNPoints(points,varargin)
 %% fcn_LineFitting_findSlopeInterceptFromNPoints
 % Performs a linear regression on the input XY data, finding best-fit slope.
@@ -31,6 +31,11 @@ function [slope, intercept, angle_in_radians, unit_tangent_vector, unit_orthogon
 %      resulting from the line fit, aligned with and orthogonal to the fit,
 %      respectively.
 %
+%      r-squared: the coefficient of determination for the line fit, or
+%      goodness-of-fit for the model
+%      (see:
+%      https://www.ncl.ac.uk/webtemplate/ask-assets/external/maths-resources/statistics/regression-and-correlation/coefficient-of-determination-r-squared.html)
+%
 % EXAMPLES:
 %      
 %      % BASIC example
@@ -46,6 +51,7 @@ function [slope, intercept, angle_in_radians, unit_tangent_vector, unit_orthogon
 % Revision history:
 % 2020_06_25 - wrote the code
 % 2020_10_13 - added verbose mode with dbstack
+% 2023_07_24 - added r-squared
 
 flag_do_debug = 0; % Flag to plot the results for debugging
 flag_check_inputs = 1; % Flag to perform input checking
@@ -165,6 +171,8 @@ if all(X == X(1))  % Are all the x values the same? This is a vertical line.
     angle_in_radians = pi/2;
     unit_tangent_vector = [cos(angle_in_radians) sin(angle_in_radians)];
     unit_orthogonal_vector = ([0 -1; 1 0]*unit_tangent_vector')';
+    r_squared = 1;
+    
 else  % The result will be an ordinary, non-vertical line
     
     % If X is square already, no need to do the transpose calculations
@@ -182,6 +190,16 @@ else  % The result will be an ordinary, non-vertical line
     angle_in_radians = atan(slope);
     unit_tangent_vector = [cos(angle_in_radians) sin(angle_in_radians)];
     unit_orthogonal_vector = ([0 -1; 1 0]*unit_tangent_vector')';
+    
+    % Calculate r-squared
+    y_mean = mean(Y);
+    y_fit = slope*X + intercept;
+    
+    sum_squared_regression_error = sum((y_fit-Y).^2,1);
+    total_sum_squares            = sum((y_mean-Y).^2,1);
+    
+    r_squared = 1 - sum_squared_regression_error/total_sum_squares;
+    
 
 end
 
@@ -207,7 +225,7 @@ if flag_do_plots
     plot(X,Y,'r.','MarkerSize',20);
 
     % Plot the fit
-    y_fit = slope*X + intercept;
+
     plot(X,y_fit,'b-','LineWidth',3);
 
     % Plot the unit vectors
@@ -229,11 +247,11 @@ if flag_do_plots
         0,...
         'c-','LineWidth',3);
     
-legend('Original Data',sprintf('Fit: y = %.2f*x + %.2f',slope,intercept),'Tangent Vector','Orthogonal Vector');
+    legend('Original Data',sprintf('Fit: y = %.2f*x + %.2f, R^2 = %.3f',slope,intercept,r_squared),'Tangent Vector','Orthogonal Vector');
 end
 
 if flag_do_debug
-    fprintf(1,'ENDING function: %s, in file: %s\n\n',st(1).name,st(1).file); %#ok<NODEF>
+    fprintf(1,'ENDING function: %s, in file: %s\n\n',st(1).name,st(1).file); 
 end
 end
 
